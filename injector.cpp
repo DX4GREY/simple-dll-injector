@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <commctrl.h>
+#include <commdlg.h> // <-- Tambahkan header ini untuk dialog file Browse
 #include <tlhelp32.h>
 #include <string>
 #include <vector>

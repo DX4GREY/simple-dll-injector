@@ -16,6 +16,9 @@ target_compile_definitions(injector PRIVATE UNICODE _UNICODE)
 # Link library standar Win32
 target_link_libraries(injector PRIVATE comctl32)
 
+# Link library standar Win32 (tambahkan comdlg32)
+target_link_libraries(injector PRIVATE comctl32 comdlg32)
+
 if(MSVC)
     target_link_options(injector PRIVATE "/MANIFESTUAC:level='requireAdministrator' uiAccess='false'")
 endif()
