@@ -1,0 +1,24 @@
+# Build outputs
+build/
+bin/
+out/
+staging/
+
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Archives & binaries
+*.zip
+*.exe
+*.dll
+*.obj
+*.pdb
+*.ilk
