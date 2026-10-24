@@ -37,6 +37,10 @@ constexpr int IDC_BTN_EJECT       = 107;
 constexpr int IDC_CHK_AUTOINJECT  = 108;
 constexpr int IDC_STATUS_TEXT     = 109;
 
+inline HMENU ToHMenu(int id) {
+    return reinterpret_cast<HMENU>(static_cast<INT_PTR>(id));
+}
+
 HWND g_hMainWnd       = nullptr;
 HWND g_hComboDll      = nullptr;
 HWND g_hSearchProc    = nullptr;
@@ -117,7 +121,8 @@ int MainWindow::Run(HINSTANCE hInstance, int nCmdShow) {
         LR_DEFAULTCOLOR
     );
 
-    WNDCLASSW wc = { 0 };
+    WNDCLASSEXW wc = { 0 };
+    wc.cbSize = sizeof(WNDCLASSEXW);
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = CLASS_NAME;
@@ -126,7 +131,7 @@ int MainWindow::Run(HINSTANCE hInstance, int nCmdShow) {
     wc.hIcon = hIcon;
     wc.hIconSm = hIconSm;
 
-    RegisterClassW(&wc);
+    RegisterClassExW(&wc);
 
     std::wstring windowTitle = GetWindowTitle();
 
@@ -173,38 +178,38 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
         HWND lblDll = CreateWindowW(L"STATIC", L"Target DLL (Drag-and-Drop supported):", WS_CHILD | WS_VISIBLE,
                                     20, 15, 340, 18, hWnd, nullptr, nullptr, nullptr);
         g_hComboDll = CreateWindowW(L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | WS_VSCROLL,
-                                    20, 35, 340, 200, hWnd, (HMENU)IDC_COMBO_DLL, nullptr, nullptr);
+                                    20, 35, 340, 200, hWnd, ToHMenu(IDC_COMBO_DLL), nullptr, nullptr);
         HWND btnBrowse = CreateWindowW(L"BUTTON", L"Browse...", WS_CHILD | WS_VISIBLE,
-                                       370, 34, 85, 26, hWnd, (HMENU)IDC_BTN_BROWSE, nullptr, nullptr);
+                                       370, 34, 85, 26, hWnd, ToHMenu(IDC_BTN_BROWSE), nullptr, nullptr);
 
         // Filter / Search Process Controls
         HWND lblSearch = CreateWindowW(L"STATIC", L"Filter Process:", WS_CHILD | WS_VISIBLE,
                                        20, 72, 100, 18, hWnd, nullptr, nullptr, nullptr);
         g_hSearchProc = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-                                      20, 92, 340, 24, hWnd, (HMENU)IDC_SEARCH_PROC, nullptr, nullptr);
+                                      20, 92, 340, 24, hWnd, ToHMenu(IDC_SEARCH_PROC), nullptr, nullptr);
 
         // Target Process List Controls
         HWND lblProc = CreateWindowW(L"STATIC", L"Select Process:", WS_CHILD | WS_VISIBLE,
                                      20, 125, 100, 18, hWnd, nullptr, nullptr, nullptr);
         g_hComboProc = CreateWindowW(L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
-                                     20, 145, 340, 250, hWnd, (HMENU)IDC_COMBO_PROC, nullptr, nullptr);
+                                     20, 145, 340, 250, hWnd, ToHMenu(IDC_COMBO_PROC), nullptr, nullptr);
         HWND btnRefresh = CreateWindowW(L"BUTTON", L"Refresh", WS_CHILD | WS_VISIBLE,
-                                         370, 144, 85, 26, hWnd, (HMENU)IDC_BTN_REFRESH, nullptr, nullptr);
+                                         370, 144, 85, 26, hWnd, ToHMenu(IDC_BTN_REFRESH), nullptr, nullptr);
 
         // Auto-Inject Checkbox
         g_hChkAuto = CreateWindowW(L"BUTTON", L"Auto-Inject upon process detection (Uses name from Filter)",
                                    WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                                   20, 182, 435, 20, hWnd, (HMENU)IDC_CHK_AUTOINJECT, nullptr, nullptr);
+                                   20, 182, 435, 20, hWnd, ToHMenu(IDC_CHK_AUTOINJECT), nullptr, nullptr);
 
         // Action Buttons: Inject & Eject
         HWND btnInject = CreateWindowW(L"BUTTON", L"INJECT DLL", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
-                                       20, 215, 210, 38, hWnd, (HMENU)IDC_BTN_INJECT, nullptr, nullptr);
+                                       20, 215, 210, 38, hWnd, ToHMenu(IDC_BTN_INJECT), nullptr, nullptr);
         HWND btnEject = CreateWindowW(L"BUTTON", L"EJECT / UNLOAD", WS_CHILD | WS_VISIBLE,
-                                      245, 215, 210, 38, hWnd, (HMENU)IDC_BTN_EJECT, nullptr, nullptr);
+                                      245, 215, 210, 38, hWnd, ToHMenu(IDC_BTN_EJECT), nullptr, nullptr);
 
         // Status bar
         g_hStatusText = CreateWindowW(L"STATIC", L"Status: Ready", WS_CHILD | WS_VISIBLE,
-                                      20, 265, 435, 22, hWnd, (HMENU)IDC_STATUS_TEXT, nullptr, nullptr);
+                                      20, 265, 435, 22, hWnd, ToHMenu(IDC_STATUS_TEXT), nullptr, nullptr);
 
         HWND allControls[] = {
             lblDll, g_hComboDll, btnBrowse, lblSearch, g_hSearchProc,
