@@ -35,11 +35,24 @@ InjectionResult PerformInjection(DWORD processId, const std::wstring& dllPath) {
     }
 
     int procArch = utils::GetProcessArchitecture(hProcess);
+    int selfArch = utils::GetCurrentBinaryArchitecture();
+
+    // Verify architecture between DLL and Target Process
     if (procArch != 0 && dllArch != procArch) {
         CloseHandle(hProcess);
         result.isMismatch = true;
-        result.message = L"Architecture mismatch! DLL: " + std::to_wstring(dllArch) +
-                         L"-bit, Target: " + std::to_wstring(procArch) + L"-bit.";
+        result.message = L"Architecture mismatch! DLL is " + std::to_wstring(dllArch) +
+                         L"-bit, but Target Process is " + std::to_wstring(procArch) + L"-bit.";
+        return result;
+    }
+
+    // Verify architecture between current Injector build and Target Process
+    if (procArch != 0 && selfArch != procArch) {
+        CloseHandle(hProcess);
+        result.isMismatch = true;
+        result.message = L"Architecture mismatch! This Injector is " + std::to_wstring(selfArch) +
+                         L"-bit, but Target Process is " + std::to_wstring(procArch) +
+                         L"-bit.\nPlease use the " + std::to_wstring(procArch) + L"-bit build of the Injector.";
         return result;
     }
 
@@ -95,6 +108,21 @@ InjectionResult PerformInjection(DWORD processId, const std::wstring& dllPath) {
 InjectionResult PerformEjection(DWORD processId, const std::wstring& dllPath) {
     InjectionResult result;
     std::wstring dllFilename = fs::path(dllPath).filename().wstring();
+
+    HANDLE hProcessCheck = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, processId);
+    if (hProcessCheck) {
+        int procArch = utils::GetProcessArchitecture(hProcessCheck);
+        int selfArch = utils::GetCurrentBinaryArchitecture();
+        CloseHandle(hProcessCheck);
+
+        if (procArch != 0 && selfArch != procArch) {
+            result.isMismatch = true;
+            result.message = L"Architecture mismatch! This Injector is " + std::to_wstring(selfArch) +
+                             L"-bit, but Target Process is " + std::to_wstring(procArch) +
+                             L"-bit.\nPlease use the " + std::to_wstring(procArch) + L"-bit build of the Injector.";
+            return result;
+        }
+    }
 
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, processId);
     if (hSnapshot == INVALID_HANDLE_VALUE) {

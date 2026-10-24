@@ -18,6 +18,9 @@ std::wstring GetSystemErrorMessage(DWORD errorCode);
 // Determines the architecture of a process: 0 = Error, 32 = x86, 64 = x64
 int GetProcessArchitecture(HANDLE hProcess);
 
+// Returns the architecture of the current running injector binary: 32 or 64
+int GetCurrentBinaryArchitecture();
+
 // Fetches all running processes on the system (excluding idle/system PID <= 4)
 std::vector<ProcessEntryData> FetchAllProcesses();
 

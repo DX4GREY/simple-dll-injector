@@ -1,4 +1,4 @@
-name: Build and Package Injector
+name: Build and Release Multi-Architecture Injector
 
 on:
   push:
@@ -8,54 +8,106 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
+    name: Build (${{ matrix.arch }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup MSVC Developer Command Prompt
+      - name: Setup MSVC Developer Command Prompt (${{ matrix.arch }})
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: x64
+          arch: ${{ matrix.arch }}
 
       - name: Setup Ninja
         uses: ashutoshvarma/setup-ninja@master
         with:
           version: 1.11.1
 
-      - name: Configure CMake
+      - name: Configure CMake (${{ matrix.arch }})
         run: >
           cmake -B build
           -G Ninja
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_CXX_COMPILER=cl
 
-      - name: Build Project
+      - name: Build Project (${{ matrix.arch }})
         run: cmake --build build --config Release
 
-      - name: Prepare Artifact Directory
+      - name: Prepare Artifact Package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path staging
-          Copy-Item "build/injector.exe" -Destination "staging/"
+          Copy-Item "build/injector-${{ matrix.arch }}.exe" -Destination "staging/"
           if (Test-Path "README.md") { Copy-Item "README.md" -Destination "staging/" }
           if (Test-Path "LICENSE") { Copy-Item "LICENSE" -Destination "staging/" }
-          Compress-Archive -Path "staging/*" -DestinationPath "Native-Injector-x64.zip"
+          Compress-Archive -Path "staging/*" -DestinationPath "Native-Injector-${{ matrix.arch }}.zip"
 
-      - name: Upload Build Artifact
+      - name: Upload Build Artifact (${{ matrix.arch }})
         uses: actions/upload-artifact@v4
         with:
-          name: Native-Injector-x64
-          path: Native-Injector-x64.zip
+          name: Native-Injector-${{ matrix.arch }}
+          path: Native-Injector-${{ matrix.arch }}.zip
           retention-days: 7
 
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded_artifacts
+
+      - name: Organize and bundle release assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release_assets
+
+          # Copy individual architecture archives
+          Get-ChildItem -Path downloaded_artifacts -Recurse -Filter "*.zip" | ForEach-Object {
+              Copy-Item $_.FullName -Destination "release_assets/"
+          }
+
+          # Prepare multi-architecture bundle containing both x64 and x86
+          New-Item -ItemType Directory -Path bundle_staging/x64
+          New-Item -ItemType Directory -Path bundle_staging/x86
+          New-Item -ItemType Directory -Path bundle_final
+
+          Expand-Archive -Path "release_assets/Native-Injector-x64.zip" -DestinationPath bundle_staging/x64
+          Expand-Archive -Path "release_assets/Native-Injector-x86.zip" -DestinationPath bundle_staging/x86
+
+          Copy-Item "bundle_staging/x64/injector-x64.exe" -Destination "bundle_final/"
+          Copy-Item "bundle_staging/x86/injector-x86.exe" -Destination "bundle_final/"
+          if (Test-Path "README.md") { Copy-Item "README.md" -Destination "bundle_final/" }
+          if (Test-Path "LICENSE") { Copy-Item "LICENSE" -Destination "bundle_final/" }
+
+          Compress-Archive -Path "bundle_final/*" -DestinationPath "release_assets/Native-Injector-MultiArch.zip"
+
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: Native-Injector-x64.zip
+          files: release_assets/*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

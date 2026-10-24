@@ -91,6 +91,11 @@ void UpdateProcessComboBox(const std::wstring& filter = L"") {
     }
 }
 
+std::wstring GetWindowTitle() {
+    int arch = utils::GetCurrentBinaryArchitecture();
+    return L"Native DLL Injector (Modular Edition) - " + std::wstring(arch == 64 ? L"x64" : L"x86");
+}
+
 } // anonymous namespace
 
 int MainWindow::Run(HINSTANCE hInstance, int nCmdShow) {
@@ -110,8 +115,10 @@ int MainWindow::Run(HINSTANCE hInstance, int nCmdShow) {
 
     RegisterClassW(&wc);
 
+    std::wstring windowTitle = GetWindowTitle();
+
     HWND hWnd = CreateWindowExW(
-        0, CLASS_NAME, L"Native DLL Injector (Modular Edition)",
+        0, CLASS_NAME, windowTitle.c_str(),
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT, 490, 340,
         nullptr, nullptr, hInstance, nullptr
@@ -320,7 +327,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
                 if (res.success) {
                     MessageBoxW(hWnd, res.message.c_str(), L"Success", MB_ICONINFORMATION);
                 } else {
-                    MessageBoxW(hWnd, res.message.c_str(), L"Information", MB_ICONINFORMATION);
+                    MessageBoxW(hWnd, res.message.c_str(), res.isMismatch ? L"Architecture Mismatch" : L"Information", res.isMismatch ? MB_ICONERROR : MB_ICONINFORMATION);
                 }
             }
         }

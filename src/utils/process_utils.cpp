@@ -22,16 +22,29 @@ std::wstring GetSystemErrorMessage(DWORD errorCode) {
 }
 
 int GetProcessArchitecture(HANDLE hProcess) {
-    BOOL isWow64 = FALSE;
-    if (!IsWow64Process(hProcess, &isWow64)) return 0;
-
     SYSTEM_INFO si;
     GetNativeSystemInfo(&si);
 
-    if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
-        return isWow64 ? 32 : 64;
+    // If running on a 32-bit OS, everything is 32-bit
+    if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
+        return 32;
     }
+
+    // On 64-bit OS: check if process is WOW64 (32-bit running on 64-bit)
+    BOOL isWow64 = FALSE;
+    if (!IsWow64Process(hProcess, &isWow64)) {
+        return 0;
+    }
+
+    return isWow64 ? 32 : 64;
+}
+
+int GetCurrentBinaryArchitecture() {
+#if defined(_WIN64)
+    return 64;
+#else
     return 32;
+#endif
 }
 
 std::vector<ProcessEntryData> FetchAllProcesses() {
