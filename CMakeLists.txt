@@ -8,7 +8,19 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "Target architecture must be 64-bit (x64)!")
 endif()
 
-add_executable(injector WIN32 injector.cpp)
+add_executable(injector WIN32
+    src/main.cpp
+    src/core/injector.cpp
+    src/core/auto_inject.cpp
+    src/utils/pe_parser.cpp
+    src/utils/process_utils.cpp
+    src/config/config.cpp
+    src/ui/main_window.cpp
+)
+
+target_include_directories(injector PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
 target_compile_definitions(injector PRIVATE UNICODE _UNICODE)
 

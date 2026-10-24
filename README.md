@@ -138,9 +138,31 @@ simple-dll-injector/
 │   └── workflows/
 │       └── build.yml       # Automated CI/CD workflow (x64 MSVC + Ninja)
 ├── .gitignore              # Git ignore rules for build artifacts
-├── CMakeLists.txt          # CMake configuration (C++20, x64 check, Win32 manifest)
-├── injector.cpp            # Core application source (Win32 GUI, PE parser, injection & ejection)
-└── README.md               # Project documentation
+├── CMakeLists.txt          # Modern CMake configuration (C++20, x64 check, Win32 manifest)
+├── include/                # Modular Header Definitions
+│   ├── config/
+│   │   └── config.hpp      # Configuration persistence declarations
+│   ├── core/
+│   │   ├── auto_inject.hpp # Background auto-injection manager
+│   │   └── injector.hpp    # Injection & ejection engine declarations
+│   ├── ui/
+│   │   └── main_window.hpp # Native Win32 window declarations
+│   └── utils/
+│       ├── pe_parser.hpp   # PE header validation and architecture parser
+│       └── process_utils.hpp # Process enumeration and error formatters
+├── src/                    # Source Implementations
+│   ├── config/
+│   │   └── config.cpp      # Settings file I/O implementation
+│   ├── core/
+│   │   ├── auto_inject.cpp # Multi-threaded auto-injection worker
+│   │   └── injector.cpp    # Remote thread injection & dynamic ejection
+│   ├── ui/
+│   │   └── main_window.cpp # Pure Win32 UI controls, events, and layout
+│   ├── utils/
+│   │   ├── pe_parser.cpp   # PE architecture and signature verification
+│   │   └── process_utils.cpp # Toolhelp32 process snapshot routines
+│   └── main.cpp            # Application entry point (wWinMain)
+└── README.md               # Comprehensive project documentation
 ```
 
 ---
