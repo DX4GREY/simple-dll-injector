@@ -3,6 +3,7 @@
 #include "core/auto_inject.hpp"
 #include "utils/process_utils.hpp"
 #include "config/config.hpp"
+#include "resource.h"
 
 #include <commctrl.h>
 #include <commdlg.h>
@@ -106,12 +107,24 @@ int MainWindow::Run(HINSTANCE hInstance, int nCmdShow) {
 
     const wchar_t CLASS_NAME[] = L"AdvancedDllInjectorWindow";
 
+    HICON hIcon = LoadIconW(hInstance, MAKEINTRESOURCEW(IDI_APP_ICON));
+    HICON hIconSm = (HICON)LoadImageW(
+        hInstance,
+        MAKEINTRESOURCEW(IDI_APP_ICON),
+        IMAGE_ICON,
+        GetSystemMetrics(SM_CXSMICON),
+        GetSystemMetrics(SM_CYSMICON),
+        LR_DEFAULTCOLOR
+    );
+
     WNDCLASSW wc = { 0 };
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = CLASS_NAME;
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
+    wc.hIcon = hIcon;
+    wc.hIconSm = hIconSm;
 
     RegisterClassW(&wc);
 
@@ -125,6 +138,13 @@ int MainWindow::Run(HINSTANCE hInstance, int nCmdShow) {
     );
 
     if (!hWnd) return 0;
+
+    if (hIcon) {
+        SendMessageW(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+    }
+    if (hIconSm) {
+        SendMessageW(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSm);
+    }
 
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);

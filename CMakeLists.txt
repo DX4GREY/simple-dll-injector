@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GuiInjector LANGUAGES CXX)
+project(GuiInjector LANGUAGES CXX RC)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,10 +25,12 @@ add_executable(injector WIN32
     src/utils/process_utils.cpp
     src/config/config.cpp
     src/ui/main_window.cpp
+    resources/resource.rc
 )
 
 target_include_directories(injector PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources
 )
 
 target_compile_definitions(injector PRIVATE

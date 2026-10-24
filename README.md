@@ -173,6 +173,10 @@ simple-dll-injector/
 │   └── utils/
 │       ├── pe_parser.hpp   # PE header validation and architecture parser
 │       └── process_utils.hpp # Process enumeration, bitness, and error formatters
+├── resources/              # Windows Application Resources
+│   ├── app.ico             # Multi-resolution icon (16x16 to 256x256)
+│   ├── resource.h          # Resource ID definitions
+│   └── resource.rc         # Windows resource script
 ├── src/                    # Source Implementations
 │   ├── config/
 │   │   └── config.cpp      # Settings file I/O implementation

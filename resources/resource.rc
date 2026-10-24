@@ -1,0 +1,5 @@
+#include "resource.h"
+
+// Set standard application icon
+// The first icon resource listed here becomes the default icon in Windows Explorer
+IDI_APP_ICON ICON "app.ico"
