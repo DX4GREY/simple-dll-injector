@@ -72,7 +72,7 @@ void SetStatus(const std::wstring& msg) {
     }
 }
 
-// 0: Unknown/Error, 32: x86, 64: x64
+// Returns architecture: 0 = Unknown/Error, 32 = x86, 64 = x64
 int GetDllArchitecture(const std::wstring& dllPath) {
     HANDLE hFile = CreateFileW(dllPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hFile == INVALID_HANDLE_VALUE) return 0;
@@ -97,7 +97,7 @@ int GetDllArchitecture(const std::wstring& dllPath) {
     return 0;
 }
 
-// 0: Error, 32: x86, 64: x64
+// Returns architecture: 0 = Error, 32 = x86, 64 = x64
 int GetProcessArchitecture(HANDLE hProcess) {
     BOOL isWow64 = FALSE;
     if (!IsWow64Process(hProcess, &isWow64)) return 0;
@@ -113,15 +113,15 @@ int GetProcessArchitecture(HANDLE hProcess) {
 
 bool PerformInjection(DWORD processId, const std::wstring& dllPath) {
     if (!fs::exists(dllPath)) {
-        SetStatus(L"File DLL tidak ditemukan.");
-        MessageBoxW(hMainWnd, L"File DLL tidak ditemukan!", L"Error", MB_ICONERROR);
+        SetStatus(L"DLL file not found.");
+        MessageBoxW(hMainWnd, L"DLL file not found!", L"Error", MB_ICONERROR);
         return false;
     }
 
     int dllArch = GetDllArchitecture(dllPath);
     if (dllArch == 0) {
-        SetStatus(L"Format DLL tidak valid / header PE rusak.");
-        MessageBoxW(hMainWnd, L"File bukan DLL PE yang valid!", L"Error", MB_ICONERROR);
+        SetStatus(L"Invalid DLL format / corrupted PE header.");
+        MessageBoxW(hMainWnd, L"The selected file is not a valid PE DLL!", L"Error", MB_ICONERROR);
         return false;
     }
 
@@ -130,14 +130,14 @@ bool PerformInjection(DWORD processId, const std::wstring& dllPath) {
                                   FALSE, processId);
     if (!hProcess) {
         DWORD err = GetLastError();
-        SetStatus(L"OpenProcess gagal: " + GetSystemErrorMessage(err));
+        SetStatus(L"OpenProcess failed: " + GetSystemErrorMessage(err));
         return false;
     }
 
     int procArch = GetProcessArchitecture(hProcess);
     if (procArch != 0 && dllArch != procArch) {
         CloseHandle(hProcess);
-        std::wstring errStr = L"Arsitektur tidak cocok! DLL: " + std::to_wstring(dllArch) + 
+        std::wstring errStr = L"Architecture mismatch! DLL: " + std::to_wstring(dllArch) + 
                               L"-bit, Target: " + std::to_wstring(procArch) + L"-bit.";
         SetStatus(errStr);
         MessageBoxW(hMainWnd, errStr.c_str(), L"Architecture Mismatch", MB_ICONERROR);
@@ -149,7 +149,7 @@ bool PerformInjection(DWORD processId, const std::wstring& dllPath) {
     if (!pDllPath) {
         DWORD err = GetLastError();
         CloseHandle(hProcess);
-        SetStatus(L"VirtualAllocEx gagal: " + GetSystemErrorMessage(err));
+        SetStatus(L"VirtualAllocEx failed: " + GetSystemErrorMessage(err));
         return false;
     }
 
@@ -157,7 +157,7 @@ bool PerformInjection(DWORD processId, const std::wstring& dllPath) {
         DWORD err = GetLastError();
         VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
         CloseHandle(hProcess);
-        SetStatus(L"WriteProcessMemory gagal: " + GetSystemErrorMessage(err));
+        SetStatus(L"WriteProcessMemory failed: " + GetSystemErrorMessage(err));
         return false;
     }
 
@@ -170,11 +170,11 @@ bool PerformInjection(DWORD processId, const std::wstring& dllPath) {
         DWORD err = GetLastError();
         VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
         CloseHandle(hProcess);
-        SetStatus(L"CreateRemoteThread gagal: " + GetSystemErrorMessage(err));
+        SetStatus(L"CreateRemoteThread failed: " + GetSystemErrorMessage(err));
         return false;
     }
 
-    SetStatus(L"Menunggu eksekusi thread...");
+    SetStatus(L"Waiting for remote thread execution...");
     WaitForSingleObject(hThread, INFINITE);
 
     DWORD exitCode = 0;
@@ -185,11 +185,11 @@ bool PerformInjection(DWORD processId, const std::wstring& dllPath) {
     CloseHandle(hProcess);
 
     if (exitCode == 0) {
-        SetStatus(L"Injeksi gagal (LoadLibraryW return NULL).");
+        SetStatus(L"Injection failed (LoadLibraryW returned NULL).");
         return false;
     }
 
-    SetStatus(L"Injeksi sukses!");
+    SetStatus(L"Injection successful!");
     return true;
 }
 
@@ -198,7 +198,7 @@ bool PerformEjection(DWORD processId, const std::wstring& dllPath) {
 
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, processId);
     if (hSnapshot == INVALID_HANDLE_VALUE) {
-        SetStatus(L"Gagal mengambil modul snapshot.");
+        SetStatus(L"Failed to create module snapshot.");
         return false;
     }
 
@@ -217,15 +217,15 @@ bool PerformEjection(DWORD processId, const std::wstring& dllPath) {
     CloseHandle(hSnapshot);
 
     if (!hTargetModule) {
-        SetStatus(L"Modul DLL tidak aktif di proses target.");
-        MessageBoxW(hMainWnd, L"Modul DLL tersebut belum terinjeksi atau tidak ditemukan di proses target!", L"Info", MB_ICONINFORMATION);
+        SetStatus(L"Module not found in target process.");
+        MessageBoxW(hMainWnd, L"The specified DLL module is not loaded in the target process!", L"Information", MB_ICONINFORMATION);
         return false;
     }
 
     HANDLE hProcess = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION |
                                   PROCESS_VM_OPERATION, FALSE, processId);
     if (!hProcess) {
-        SetStatus(L"OpenProcess gagal: " + GetSystemErrorMessage(GetLastError()));
+        SetStatus(L"OpenProcess failed: " + GetSystemErrorMessage(GetLastError()));
         return false;
     }
 
@@ -236,7 +236,7 @@ bool PerformEjection(DWORD processId, const std::wstring& dllPath) {
     HANDLE hThread = CreateRemoteThread(hProcess, nullptr, 0, pFreeLibrary, (LPVOID)hTargetModule, 0, nullptr);
     if (!hThread) {
         CloseHandle(hProcess);
-        SetStatus(L"Gagal membuat thread FreeLibrary.");
+        SetStatus(L"Failed to create FreeLibrary thread.");
         return false;
     }
 
@@ -244,8 +244,8 @@ bool PerformEjection(DWORD processId, const std::wstring& dllPath) {
     CloseHandle(hThread);
     CloseHandle(hProcess);
 
-    SetStatus(L"DLL berhasil di-eject!");
-    MessageBoxW(hMainWnd, L"Modul DLL berhasil dilepaskan (unloaded) dari proses!", L"Sukses", MB_ICONINFORMATION);
+    SetStatus(L"DLL ejected successfully!");
+    MessageBoxW(hMainWnd, L"DLL module has been successfully unloaded from the process!", L"Success", MB_ICONINFORMATION);
     return true;
 }
 
@@ -349,10 +349,10 @@ void AutoInjectWorker() {
                     std::wstring dllPath = dllBuf;
 
                     if (!dllPath.empty()) {
-                        SetStatus(L"Proses terdeteksi! Memulai auto-injeksi...");
-                        Sleep(1500); // Jeda singkat menunggu inisialisasi modul target
+                        SetStatus(L"Process detected! Initiating auto-injection...");
+                        Sleep(1500); // Brief delay waiting for target module initialization
                         if (PerformInjection(foundPid, dllPath)) {
-                            // Matikan auto-inject setelah sekali berhasil
+                            // Turn off auto-inject after successful injection
                             SendMessageW(hChkAuto, BM_SETCHECK, BST_UNCHECKED, 0);
                             g_autoInjectRunning = false;
                             break;
@@ -377,40 +377,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                             CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
 
-        // Target DLL
-        HWND lblDll = CreateWindowW(L"STATIC", L"Target DLL (Bisa Drag-and-Drop file ke sini):", WS_CHILD | WS_VISIBLE,
+        // Target DLL Controls
+        HWND lblDll = CreateWindowW(L"STATIC", L"Target DLL (Drag-and-Drop supported):", WS_CHILD | WS_VISIBLE,
                                     20, 15, 340, 18, hWnd, nullptr, nullptr, nullptr);
         hComboDll = CreateWindowW(L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | WS_VSCROLL,
                                   20, 35, 340, 200, hWnd, (HMENU)IDC_COMBO_DLL, nullptr, nullptr);
         HWND btnBrowse = CreateWindowW(L"BUTTON", L"Browse...", WS_CHILD | WS_VISIBLE,
                                        370, 34, 85, 26, hWnd, (HMENU)IDC_BTN_BROWSE, nullptr, nullptr);
 
-        // Filter / Search Process
-        HWND lblSearch = CreateWindowW(L"STATIC", L"Filter Proses:", WS_CHILD | WS_VISIBLE,
+        // Filter / Search Process Controls
+        HWND lblSearch = CreateWindowW(L"STATIC", L"Filter Process:", WS_CHILD | WS_VISIBLE,
                                       20, 72, 100, 18, hWnd, nullptr, nullptr, nullptr);
         hSearchProc = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
                                     20, 92, 340, 24, hWnd, (HMENU)IDC_SEARCH_PROC, nullptr, nullptr);
 
-        // Target Process List
-        HWND lblProc = CreateWindowW(L"STATIC", L"Pilih Proses:", WS_CHILD | WS_VISIBLE,
+        // Target Process List Controls
+        HWND lblProc = CreateWindowW(L"STATIC", L"Select Process:", WS_CHILD | WS_VISIBLE,
                                      20, 125, 100, 18, hWnd, nullptr, nullptr, nullptr);
         hComboProc = CreateWindowW(L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
                                    20, 145, 340, 250, hWnd, (HMENU)IDC_COMBO_PROC, nullptr, nullptr);
         HWND btnRefresh = CreateWindowW(L"BUTTON", L"Refresh", WS_CHILD | WS_VISIBLE,
                                         370, 144, 85, 26, hWnd, (HMENU)IDC_BTN_REFRESH, nullptr, nullptr);
 
-        // Checkbox Auto-inject
-        hChkAuto = CreateWindowW(L"BUTTON", L"Auto-Inject saat proses terdeteksi (Gunakan nama di Filter Proses)",
+        // Auto-Inject Checkbox
+        hChkAuto = CreateWindowW(L"BUTTON", L"Auto-Inject upon process detection (Uses name from Filter)",
                                  WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                                  20, 182, 435, 20, hWnd, (HMENU)IDC_CHK_AUTOINJECT, nullptr, nullptr);
 
-        // Tombol Inject & Eject
+        // Action Buttons: Inject & Eject
         HWND btnInject = CreateWindowW(L"BUTTON", L"INJECT DLL", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
                                        20, 215, 210, 38, hWnd, (HMENU)IDC_BTN_INJECT, nullptr, nullptr);
         HWND btnEject = CreateWindowW(L"BUTTON", L"EJECT / UNLOAD", WS_CHILD | WS_VISIBLE,
                                       245, 215, 210, 38, hWnd, (HMENU)IDC_BTN_EJECT, nullptr, nullptr);
 
-        // Status text
+        // Status bar
         hStatusText = CreateWindowW(L"STATIC", L"Status: Ready", WS_CHILD | WS_VISIBLE,
                                     20, 265, 435, 22, hWnd, (HMENU)IDC_STATUS_TEXT, nullptr, nullptr);
 
@@ -425,7 +425,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         PopulateDllList();
         FetchAllProcesses();
 
-        // Muat saved config
+        // Load saved configuration
         std::wstring lastDll, lastProc;
         LoadConfig(lastDll, lastProc);
         if (!lastDll.empty()) {
@@ -446,9 +446,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if (DragQueryFileW(hDrop, 0, droppedFile, MAX_PATH)) {
             if (fs::path(droppedFile).extension() == L".dll") {
                 SetWindowTextW(hComboDll, droppedFile);
-                SetStatus(L"File DLL di-drop: " + fs::path(droppedFile).filename().wstring());
+                SetStatus(L"DLL file dropped: " + fs::path(droppedFile).filename().wstring());
             } else {
-                MessageBoxW(hWnd, L"File yang di-drop harus berekstensi .dll!", L"Peringatan", MB_ICONWARNING);
+                MessageBoxW(hWnd, L"Dropped file must have a .dll extension!", L"Warning", MB_ICONWARNING);
             }
         }
         DragFinish(hDrop);
@@ -469,7 +469,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             wchar_t query[MAX_PATH];
             GetWindowTextW(hSearchProc, query, MAX_PATH);
             UpdateProcessComboBox(query);
-            SetStatus(L"Daftar proses diperbarui.");
+            SetStatus(L"Process list updated.");
         }
         else if (id == IDC_BTN_BROWSE) {
             wchar_t szFile[MAX_PATH] = { 0 };
@@ -492,23 +492,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 wchar_t searchBuf[MAX_PATH] = { 0 };
                 GetWindowTextW(hSearchProc, searchBuf, MAX_PATH);
                 if (wcslen(searchBuf) == 0) {
-                    MessageBoxW(hWnd, L"Ketik nama file proses (contoh: GTA5_Enhanced.exe) pada kolom Filter Proses terlebih dahulu!", L"Info", MB_ICONINFORMATION);
+                    MessageBoxW(hWnd, L"Please enter the process executable name (e.g., GTA5_Enhanced.exe) in the Process Filter field first!", L"Information", MB_ICONINFORMATION);
                     SendMessageW(hChkAuto, BM_SETCHECK, BST_UNCHECKED, 0);
                     break;
                 }
                 g_autoInjectRunning = true;
                 if (g_autoInjectThread.joinable()) g_autoInjectThread.join();
                 g_autoInjectThread = std::thread(AutoInjectWorker);
-                SetStatus(L"Auto-Inject aktif, menunggu proses target...");
+                SetStatus(L"Auto-Inject active, waiting for target process...");
             } else {
                 g_autoInjectRunning = false;
-                SetStatus(L"Auto-Inject dimatikan.");
+                SetStatus(L"Auto-Inject disabled.");
             }
         }
         else if (id == IDC_BTN_INJECT || id == IDC_BTN_EJECT) {
             int curSel = (int)SendMessageW(hComboProc, CB_GETCURSEL, 0, 0);
             if (curSel < 0 || curSel >= static_cast<int>(g_displayedPids.size())) {
-                MessageBoxW(hWnd, L"Pilih proses target terlebih dahulu!", L"Peringatan", MB_ICONWARNING);
+                MessageBoxW(hWnd, L"Please select a target process first!", L"Warning", MB_ICONWARNING);
                 break;
             }
 
@@ -517,7 +517,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             std::wstring dllPath = dllBuffer;
 
             if (dllPath.empty()) {
-                MessageBoxW(hWnd, L"Pilih atau masukkan path DLL terlebih dahulu!", L"Peringatan", MB_ICONWARNING);
+                MessageBoxW(hWnd, L"Please select or specify a DLL path first!", L"Warning", MB_ICONWARNING);
                 break;
             }
 
@@ -529,7 +529,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
             if (id == IDC_BTN_INJECT) {
                 if (PerformInjection(pid, dllPath)) {
-                    MessageBoxW(hWnd, L"DLL berhasil diinjeksi ke target!", L"Sukses", MB_ICONINFORMATION);
+                    MessageBoxW(hWnd, L"DLL successfully injected into target process!", L"Success", MB_ICONINFORMATION);
                 }
             } else {
                 PerformEjection(pid, dllPath);

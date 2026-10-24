@@ -5,14 +5,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(FATAL_ERROR "Target arsitektur harus 64-bit (x64)!")
+    message(FATAL_ERROR "Target architecture must be 64-bit (x64)!")
 endif()
 
 add_executable(injector WIN32 injector.cpp)
 
 target_compile_definitions(injector PRIVATE UNICODE _UNICODE)
 
-# Tautkan library standar Win32 yang diperlukan
+# Link required standard Win32 libraries
 target_link_libraries(injector PRIVATE comctl32 comdlg32 shell32)
 
 if(MSVC)

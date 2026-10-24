@@ -6,154 +6,154 @@
 [![UI Framework](https://img.shields.io/badge/GUI-Pure%20Win32%20API-informational)](#)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Aplikasi GUI DLL Injector dan Ejector modular berkinerja tinggi untuk sistem operasi Windows 64-bit (x64). Dikembangkan menggunakan standar **Modern C++20** dan **Native Win32 API / Common Controls v6**, menghasilkan *footprint* memori minimal, kecepatan respons tinggi, dan tanpa dependensi framework eksternal yang berat (seperti Qt, .NET, atau Electron).
+A high-performance, modular, and lightweight graphical DLL Injector and Ejector designed for 64-bit Windows operating systems (x64). Built using **Modern C++20** and the **Native Win32 API / Common Controls v6**, this tool achieves an ultra-low memory footprint, immediate responsiveness, and zero dependencies on bulky third-party GUI frameworks (such as Qt, .NET, or Electron).
 
-Dilengkapi dengan validasi header Portable Executable (PE), pendeteksi kesesuaian arsitektur (x86 vs x64), fitur *auto-inject*, *ejection/unloading* modul dinamis, serta integrasi UAC Administrator.
-
----
-
-## 🌟 Fitur Utama
-
-- **100% Native & Ultra-Lightweight**: Menggunakan Win32 API murni dengan visual style Common Controls v6 dan tipografi Segoe UI. Ukuran file executable sangat ringkas dengan konsumsi resource yang sangat rendah.
-- **Validasi Header PE & Deteksi Arsitektur**:
-  - Membaca dan memvalidasi *DOS Header* & *PE NT Headers* sebelum injeksi dijalankan.
-  - Memeriksa kesesuaian arsitektur antara DLL dan target process (mencegah *crash* akibat menginjeksi DLL arsitektur silang, misalnya 32-bit ke 64-bit).
-- **Injeksi Aman (Remote Thread Injection)**:
-  - Alokasi memori virtual di target proses melalui `VirtualAllocEx`.
-  - Penulisan buffer path DLL via `WriteProcessMemory`.
-  - Eksekusi aman `LoadLibraryW` menggunakan `CreateRemoteThread`.
-  - Monitoring thread exit code untuk memastikan modul berhasil di-*load*.
-- **Modul Ejection / Dynamic Unloader**:
-  - Mengambil snapshot modul target secara *real-time* via `CreateToolhelp32Snapshot`.
-  - Mencari *base handle* modul spesifik.
-  - Melepaskan (*unload*) modul dari proses target menggunakan panggilan remote `FreeLibrary` tanpa perlu me-restart aplikasi target.
-- **Auto-Inject Cerdas**:
-  - Dijalankan pada thread latar belakang (`std::thread` & `std::atomic`).
-  - Memantau siklus hidup proses berdasarkan nama file eksekutabel (contoh: `target_app.exe`).
-  - Menginjeksi secara otomatis segera setelah proses target muncul dengan jeda stabilisasi.
-- **User Experience (UX) Ergonomis**:
-  - **Drag-and-Drop**: Tarik file `.dll` langsung ke jendela aplikasi.
-  - **Filter & Search Real-Time**: Pencarian cepat daftar proses berdasarkan nama file atau kata kunci.
-  - **Auto-Discovery DLL**: Otomatis mendeteksi file `.dll` yang berada di direktori kerja aplikasi.
-  - **File Dialog Browser**: Kemudahan navigasi file melalui Windows Open File Dialog standar.
-  - **State Persistence**: Mengingat path DLL dan filter proses terakhir yang disimpan ke dalam file konfigurasi lokal `config.ini`.
-  - **Deskripsi Error Informatif**: Integrasi `FormatMessageW` untuk menerjemahkan kode error Win32 API menjadi pesan deskriptif.
+The injector features integrated Portable Executable (PE) header validation, automatic architecture verification (x86 vs x64), background auto-injection, dynamic module ejection/unloading, and embedded UAC Administrator elevation.
 
 ---
 
-## 🔄 Alur Kerja Injeksi
+## 🌟 Key Features
 
-Berikut adalah alur logika yang diterapkan sebelum dan saat injeksi dilakukan:
+- **100% Native & Ultra-Lightweight**: Built purely with the Win32 API, styled with Common Controls v6 and modern Segoe UI typography. Delivers a compact standalone binary with virtually zero runtime overhead.
+- **PE Header Parsing & Architecture Validation**:
+  - Automatically parses the DOS Header and PE NT Headers (`IMAGE_NT_HEADERS`) prior to injection.
+  - Verifies architectural compatibility between the DLL and target process to prevent target crashes caused by mismatched bitness (e.g., attempting to inject 32-bit binaries into 64-bit processes).
+- **Safe Remote Thread Injection**:
+  - Allocates virtual memory in the target process using `VirtualAllocEx`.
+  - Safely writes the DLL path buffer via `WriteProcessMemory`.
+  - Invokes `LoadLibraryW` via `CreateRemoteThread`.
+  - Monitors the thread exit code via `GetExitCodeThread` to verify successful module mapping.
+- **Dynamic Module Ejection / Unloader**:
+  - Takes a real-time module snapshot via `CreateToolhelp32Snapshot`.
+  - Identifies the module's base handle (`HMODULE`).
+  - Safely calls `FreeLibrary` inside a remote thread, unloading the DLL without needing to restart the host application.
+- **Smart Auto-Inject**:
+  - Powered by a non-blocking background thread (`std::thread`, `std::atomic`).
+  - Actively monitors for target process launches by executable name (e.g., `TargetApp.exe`).
+  - Automatically executes injection upon detection with an intentional stabilization delay.
+- **Ergonomic User Experience**:
+  - **Drag-and-Drop**: Drag `.dll` files directly into the injector window.
+  - **Real-Time Process Filter**: Instantly search and filter active processes by name or PID.
+  - **Local DLL Auto-Discovery**: Automatically scans and lists `.dll` files in the working directory.
+  - **File Dialog Browser**: Standard Windows Open File dialog integration.
+  - **Configuration Persistence**: Automatically saves and restores the last-used DLL path and process filter via `config.ini`.
+  - **Descriptive Error Reporting**: Translates Win32 API error codes into human-readable messages using `FormatMessageW`.
+
+---
+
+## 🔄 Injection Workflow
+
+The diagram below illustrates the validation and injection pipeline:
 
 ```mermaid
 flowchart TD
-    A([Mulai Injeksi]) --> B[Periksa Keberadaan File DLL]
-    B -- Tidak Ada --> B1[Tampilkan Pesan Error: File Tidak Ditemukan]
-    B -- Ada --> C[Analisis Header PE DLL<br/>DOS/NT Headers Machine]
-    C -- PE Rusak --> C1[Tampilkan Pesan Error: Format PE Tidak Valid]
-    C -- PE Valid --> D[Buka Handle Proses Target via OpenProcess]
-    D -- Gagal --> D1[Tampilkan Error Win32 GetLastError]
-    D -- Berhasil --> E[Validasi Arsitektur<br/>DLL vs Target Process]
-    E -- Mismatch x86 / x64 --> E1[Batalkan & Laporkan Architecture Mismatch]
-    E -- Cocok --> F[Alokasi Memori Target via VirtualAllocEx]
-    F --> G[Tulis Path DLL via WriteProcessMemory]
-    G --> H[Buat Remote Thread ke LoadLibraryW via CreateRemoteThread]
-    H --> I[Tunggu Eksekusi Thread & Evaluasi Exit Code]
-    I --> J[Bebaskan Memori Virtual via VirtualFreeEx & Tutup Handle]
-    J --> K([Selesai / Sukses])
+    A([Start Injection]) --> B[Verify DLL File Existence]
+    B -- Not Found --> B1[Display Error: File Not Found]
+    B -- Found --> C[Inspect PE Header<br/>DOS & NT Machine Field]
+    C -- Corrupt / Invalid --> C1[Display Error: Invalid PE Format]
+    C -- Valid PE --> D[Acquire Target Process Handle via OpenProcess]
+    D -- Failed --> D1[Display System Error GetLastError]
+    D -- Success --> E[Validate Architecture Compatibility<br/>DLL vs Target Process]
+    E -- Mismatch x86 / x64 --> E1[Abort: Architecture Mismatch Error]
+    E -- Match Confirmed --> F[Allocate Virtual Memory in Target via VirtualAllocEx]
+    F --> G[Write DLL Path Buffer via WriteProcessMemory]
+    G --> H[Create Remote Thread targeting LoadLibraryW via CreateRemoteThread]
+    H --> I[Wait for Thread Execution & Evaluate Exit Code]
+    I --> J[Free Virtual Memory via VirtualFreeEx & Close Handles]
+    J --> K([Complete / Injected])
 ```
 
 ---
 
-## 📋 Persyaratan Sistem
+## 📋 System Requirements
 
-- **Sistem Operasi**: Windows 10 / Windows 11 (64-bit / x64)
-- **Hak Akses**: Hak Administrator (*Privileged UAC* diminta secara otomatis melalui manifest)
-- **Compiler**: Microsoft Visual C++ (MSVC) dengan dukungan C++20 (Visual Studio 2022 v143 atau lebih baru)
-- **Build System**: CMake versi 3.20 ke atas dan Ninja / MSBuild
+- **Operating System**: Windows 10 / Windows 11 (64-bit / x64)
+- **Privileges**: Administrator privileges (UAC elevation requested automatically via application manifest)
+- **Compiler**: Microsoft Visual C++ (MSVC) with C++20 standard support (Visual Studio 2022 v143 or newer)
+- **Build System**: CMake 3.20+ and Ninja or MSBuild
 
 ---
 
-## 🛠️ Panduan Build & Kompilasi
+## 🛠️ Build & Compilation
 
-### Opsi 1: Kompilasi via Command Line (CMake + Ninja / MSVC)
+### Option 1: Command Line (CMake + Ninja / MSVC)
 
-1. Buka terminal **x64 Native Tools Command Prompt for VS 2022**.
-2. Clone atau buka direktori proyek ini:
+1. Open the **x64 Native Tools Command Prompt for VS 2022**.
+2. Clone or navigate to the project directory:
    ```cmd
    git clone https://github.com/username/simple-dll-injector.git
    cd simple-dll-injector
    ```
-3. Lakukan konfigurasi build:
+3. Configure the build directory:
    ```cmd
    cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
    ```
-4. Jalankan kompilasi:
+4. Build the executable:
    ```cmd
    cmake --build build --config Release
    ```
-5. File eksekutabel hasil kompilasi akan berada di folder `build/injector.exe`.
+5. The compiled executable will be located at `build/injector.exe`.
 
 ---
 
-### Opsi 2: Visual Studio IDE
+### Option 2: Visual Studio IDE
 
-1. Buka Visual Studio 2022.
-2. Pilih menu **File** > **Open** > **Folder...** dan arahkan ke direktori proyek ini.
-3. Pastikan konfigurasi arsitektur aktif disetel ke **x64-Release**.
-4. Tekan tombol **Build All** (`Ctrl + Shift + B`).
-
----
-
-## 🚀 Panduan Penggunaan
-
-### 1. Injeksi Manual
-1. Jalankan `injector.exe` dengan hak Administrator.
-2. Tentukan target DLL:
-   - Pilih dari *dropdown* (jika DLL berada di folder yang sama), atau
-   - Klik tombol **Browse...**, atau
-   - Cukup seret (*drag-and-drop*) file `.dll` Anda ke jendela injector.
-3. Ketik nama proses pada kolom **Filter Proses** (misalnya `notepad.exe` atau `game.exe`).
-4. Pilih proses dari *dropdown* **Pilih Proses**.
-5. Klik tombol **INJECT DLL**.
-
-### 2. Auto-Inject Saat Proses Diluncurkan
-1. Tentukan target DLL Anda.
-2. Ketik nama lengkap file proses pada kolom **Filter Proses** (contoh: `GameClient.exe`).
-3. Berikan centang pada kotak **Auto-Inject saat proses terdeteksi**.
-4. Jalankan aplikasi/game target Anda. Injector akan mendeteksi proses secara otomatis dan menginjeksi DLL dalam hitungan detik.
-
-### 3. Eject / Melepaskan DLL
-1. Pilih proses target yang sedang aktif.
-2. Pastikan path atau nama DLL sesuai dengan modul yang ingin dilepaskan.
-3. Klik tombol **EJECT / UNLOAD**. Modul akan di-*unload* dari proses secara dinamis.
+1. Launch Visual Studio 2022.
+2. Select **File** > **Open** > **Folder...** and choose the project root.
+3. Set the active configuration preset/architecture to **x64-Release**.
+4. Press `Ctrl + Shift + B` (or select **Build** > **Build All**) to compile.
 
 ---
 
-## 📁 Struktur Proyek
+## 🚀 Usage Guide
+
+### 1. Manual Injection
+1. Run `injector.exe` as Administrator.
+2. Select your target DLL:
+   - Choose from the drop-down list (if the DLL is placed in the same directory),
+   - Click **Browse...** to navigate your filesystem, or
+   - Simply drag and drop your `.dll` file directly onto the injector window.
+3. Type the target executable name into the **Filter Process** box (e.g., `notepad.exe` or `game.exe`).
+4. Select the process from the **Select Process** list.
+5. Click **INJECT DLL**.
+
+### 2. Auto-Inject on Process Launch
+1. Select or drop your target DLL.
+2. Enter the exact executable name into the **Filter Process** field (e.g., `GameClient.exe`).
+3. Check the **Auto-Inject upon process detection** checkbox.
+4. Launch your target application. The injector will detect the process and inject the DLL automatically.
+
+### 3. Eject / Unload DLL
+1. Select the running target process.
+2. Ensure the DLL path or filename corresponds to the module you wish to eject.
+3. Click **EJECT / UNLOAD**. The module will be cleanly detached from the remote process.
+
+---
+
+## 📁 Project Structure
 
 ```text
 simple-dll-injector/
 ├── .github/
 │   └── workflows/
-│       └── build.yml       # Otomatisasi CI/CD GitHub Actions (x64 MSVC + Ninja)
-├── .gitignore              # Konfigurasi ignoransi file build/artefak
-├── CMakeLists.txt          # Skrip build CMake modern (C++20, x64 check, Win32 manifest)
-├── injector.cpp            # Kode sumber utama GUI Win32, PE parser, Injeksi & Ejeksi
-└── README.md               # Dokumentasi proyek
+│       └── build.yml       # Automated CI/CD workflow (x64 MSVC + Ninja)
+├── .gitignore              # Git ignore rules for build artifacts
+├── CMakeLists.txt          # CMake configuration (C++20, x64 check, Win32 manifest)
+├── injector.cpp            # Core application source (Win32 GUI, PE parser, injection & ejection)
+└── README.md               # Project documentation
 ```
 
 ---
 
-## 🛡️ Keamanan & Penafian (Disclaimer)
+## 🛡️ Disclaimer
 
 > [!WARNING]
-> Proyek ini dibuat dan dipublikasikan semata-mata untuk **tujuan edukasi, penelitian keamanan perangkat lunak (*security research*), *software debugging*, dan modifikasi perangkat lunak secara sah**.
+> This project is designed, developed, and published strictly for **educational purposes, reverse engineering research, software debugging, and authorized software testing**.
 >
-> Pengembang tidak bertanggung jawab atas penyalahgunaan aplikasi ini untuk aktivitas terlarang, kecurangan daring (*online game cheating*), pelanggaran hak cipta, atau aktivitas yang melanggar *Terms of Service* (ToS) dari perangkat lunak pihak ketiga. Gunakan secara bijak dan bertanggung jawab.
+> The developers and contributors assume no liability and are not responsible for any misuse, unauthorized modification of third-party software, online cheating, copyright infringement, or violations of third-party Terms of Service (ToS). Please use this tool ethically and responsibly.
 
 ---
 
-## 📄 Lisensi
+## 📄 License
 
-Didistribusikan di bawah lisensi [MIT](LICENSE). Silakan gunakan, pelajari, dan kembangkan sesuai dengan kebutuhan Anda.
+Distributed under the [MIT License](LICENSE). Feel free to use, inspect, and customize according to your requirements.
